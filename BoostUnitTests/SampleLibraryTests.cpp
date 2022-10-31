@@ -5,7 +5,11 @@
 //
 
 #import "SampleLibrary.hpp"
-#import <boost/test/unit_test.hpp>
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wquoted-include-in-framework-header"
+#pragma clang diagnostic ignored "-Wdocumentation"
+#include <boost/test/unit_test.hpp>
+#pragma clang diagnostic pop
 
 // NOTE: This name must be unique within the entire test suite
 BOOST_AUTO_TEST_SUITE(SampleLibraryTests)

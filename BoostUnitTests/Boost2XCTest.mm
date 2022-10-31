@@ -11,12 +11,16 @@
 #define BOOST_TEST_NO_MAIN
 #define BOOST_TEST_ALTERNATIVE_INIT_API
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wquoted-include-in-framework-header"
+#pragma clang diagnostic ignored "-Wdocumentation"
 #include <boost/test/unit_test.hpp>
 #include <boost/test/unit_test_parameters.hpp>
 #include <boost/test/tree/traverse.hpp>
 #include <boost/test/results_collector.hpp>
 #include <boost/test/unit_test_log_formatter.hpp>
 #include <boost/test/execution_monitor.hpp>
+#pragma clang diagnostic pop
 
 using namespace boost::unit_test;
 
@@ -103,6 +107,14 @@ struct xctest_failure_reporter : unit_test_log_formatter {
     void set_log_level(log_level) {};
     log_level get_log_level() const { return log_all_errors; }
 
+#if BOOST_VERSION >= 107000
+     // Since v1.70.0 the second argument indicates whether build info should be logged or not
+     // See boostorg/test.git:7e20f966dca4e4b49585bbe7654334f31b35b3db
+    void log_build_info(std::ostream& os, bool log_build_info) {
+        if (log_build_info) this->log_build_info(os);
+    }
+#endif
+    
 private:
 
     /* Record the failure in the XCTestCase we're currently executing  */
@@ -111,11 +123,24 @@ private:
         NSString *description = _failureDescription.str().size() ? [[NSString stringWithUTF8String:_failureDescription.str().c_str()] stringByStandardizingPath] : NULL;
 
         assert(_xctest);
+#if 0
         [_xctest recordFailureWithDescription:description
                                        inFile:_sourceFilePath
                                        atLine:_sourceFileLine
                                      expected:YES];
-
+#else
+        XCTSourceCodeLocation* location = [[XCTSourceCodeLocation alloc] initWithFilePath:_sourceFilePath
+                                                                               lineNumber:_sourceFileLine];
+        XCTSourceCodeContext* context = [[XCTSourceCodeContext alloc] initWithLocation:location];
+        XCTIssue* issue = [[XCTIssue alloc] initWithType:XCTIssueTypeAssertionFailure
+                                      compactDescription:description
+                                     detailedDescription:description
+                                       sourceCodeContext:context
+                                         associatedError:nil
+                                             attachments:@[]];
+        [_xctest recordIssue:issue];
+#endif
+        
         _failureHasBeenReported = false;
         _sourceFileLine = 0;
         _sourceFilePath = NULL;
